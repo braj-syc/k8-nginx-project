@@ -6,7 +6,7 @@
 #   2. cd into repo
 #   3. nano deploy.sh and set DOCKERHUB_USERNAME
 #   4. chmod +x deploy.sh
-#   5. docker login
+#   5. docker login -u your_username
 #   6. ./deploy.sh
 # ============================================================
 
@@ -38,7 +38,6 @@ echo "   K8s Full Stack Deploy Script — $(date)"
 echo "============================================================"
 echo ""
 
-
 # ─── Validate config ─────────────────────────────────────────
 if [ -z "$DOCKERHUB_USERNAME" ]; then
   error "Please set DOCKERHUB_USERNAME at the top of this script before running."
@@ -65,10 +64,14 @@ if ! command -v docker &>/dev/null; then
   sudo systemctl enable --now docker
   sudo usermod -aG docker $USER
   check "Docker install"
-  success "Docker installed"
-  warn "Re-launching script with docker group active..."
+  success "Docker installed — re-launching with docker group active..."
   exec sg docker "$0 $*"
 else
+  # make sure current user is in docker group
+  if ! groups $USER | grep -q docker; then
+    sudo usermod -aG docker $USER
+    exec sg docker "$0 $*"
+  fi
   success "Docker already installed"
 fi
 
@@ -77,7 +80,7 @@ fi
 # ============================================================
 log "Step 2/8 — Verifying Docker Hub login"
 if ! cat ~/.docker/config.json 2>/dev/null | grep -q "auths"; then
-  error "Not logged in to Docker Hub. Please run 'docker login' before running this script."
+  error "Not logged in to Docker Hub. Please run 'docker login -u ${DOCKERHUB_USERNAME}' first then re-run this script."
 fi
 success "Docker Hub credentials found"
 
