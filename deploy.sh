@@ -215,7 +215,7 @@ check "backend deploy"
 log "  Waiting for backend to be ready..."
 kubectl wait --for=condition=ready pod \
   --selector=app=backend \
-  --timeout=120s
+  --timeout=300s
 check "backend ready"
 success "Backend is ready"
 
@@ -233,7 +233,7 @@ check "ingress"
 log "  Waiting for frontend to be ready..."
 kubectl wait --for=condition=ready pod \
   --selector=app=frontend \
-  --timeout=60s
+  --timeout=120s
 check "frontend ready"
 success "Frontend is ready"
 
