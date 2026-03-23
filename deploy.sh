@@ -1,8 +1,13 @@
 #!/bin/bash
 # ============================================================
 # Full Stack K8s Deploy Script
-# Usage: chmod +x deploy.sh && ./deploy.sh
-# Run this from inside your cloned repo directory
+# Usage:
+#   1. git clone your repo
+#   2. cd into repo
+#   3. nano deploy.sh and set DOCKERHUB_USERNAME
+#   4. chmod +x deploy.sh
+#   5. docker login
+#   6. ./deploy.sh
 # ============================================================
 
 set -euo pipefail
@@ -24,7 +29,7 @@ check() { if [ $? -ne 0 ]; then error "$1 failed. Exiting."; fi }
 # ============================================================
 # CONFIGURE THIS BEFORE RUNNING
 # ============================================================
-DOCKERHUB_USERNAME="brajsharma"
+DOCKERHUB_USERNAME=""
 # ============================================================
 
 echo ""
@@ -43,7 +48,7 @@ if [ "$EUID" -eq 0 ]; then
   error "Do NOT run this script as root. Run as azureuser."
 fi
 
-# ─── Make sure we are inside the repo ────────────────────────
+# ─── Repo structure check ────────────────────────────────────
 if [ ! -f "deploy.sh" ] || [ ! -d "k8s" ] || [ ! -d "frontend" ] || [ ! -d "backend" ]; then
   error "Please run this script from the root of the cloned repo directory."
 fi
@@ -67,12 +72,13 @@ else
 fi
 
 # ============================================================
-# STEP 2 — Docker Hub login
+# STEP 2 — Verify Docker Hub login
 # ============================================================
-log "Step 2/8 — Docker Hub login"
-docker login
-check "Docker login"
-success "Logged in to Docker Hub"
+log "Step 2/8 — Verifying Docker Hub login"
+if ! cat ~/.docker/config.json 2>/dev/null | grep -q "auths"; then
+  error "Not logged in to Docker Hub. Please run 'docker login' before running this script."
+fi
+success "Docker Hub credentials found"
 
 # ============================================================
 # STEP 3 — Build and push images
@@ -99,7 +105,6 @@ success "Backend image pushed"
 log "Step 4/8 — Updating image names in deployment YAMLs"
 sed -i "s|YOUR_DOCKERHUB_USERNAME|${DOCKERHUB_USERNAME}|g" k8s/frontend-deployment.yaml
 sed -i "s|YOUR_DOCKERHUB_USERNAME|${DOCKERHUB_USERNAME}|g" k8s/backend-deployment.yaml
-# handle re-runs where username is already set
 sed -i "s|image: .*/k8s-frontend:latest|image: ${DOCKERHUB_USERNAME}/k8s-frontend:latest|g" k8s/frontend-deployment.yaml
 sed -i "s|image: .*/k8s-backend:latest|image: ${DOCKERHUB_USERNAME}/k8s-backend:latest|g" k8s/backend-deployment.yaml
 success "Image names updated"
@@ -144,7 +149,6 @@ if ! kubectl get ns ingress-nginx &>/dev/null; then
     --timeout=120s
   check "ingress-nginx ready"
 
-  # delete admission webhook — causes timeout on bare-metal
   kubectl delete validatingwebhookconfiguration ingress-nginx-admission 2>/dev/null || true
   success "nginx ingress controller installed"
 else
@@ -238,11 +242,9 @@ echo -e "${GREEN}   Deployment Complete!${NC}"
 echo "============================================================"
 echo ""
 
-# get ingress nodeport
 NODEPORT=$(kubectl get svc -n ingress-nginx ingress-nginx-controller \
   -o jsonpath='{.spec.ports[?(@.port==80)].nodePort}' 2>/dev/null || echo "unknown")
 
-# get worker node IP
 WORKER_IP=$(kubectl get nodes -o wide \
   --no-headers | grep worker | awk '{print $7}' 2>/dev/null || echo "YOUR_WORKER_IP")
 
@@ -250,7 +252,12 @@ echo -e "${CYAN}All pods:${NC}"
 kubectl get pods -o wide
 
 echo ""
-echo -e "${CYAN}Ingress NodePort:${NC} ${NODEPORT}"
+echo -e "${CYAN}All services:${NC}"
+kubectl get svc
+
+echo ""
+echo -e "${CYAN}Ingress:${NC}"
+kubectl get ingress
 
 echo ""
 echo -e "${YELLOW}============================================================"
@@ -259,6 +266,7 @@ echo "============================================================${NC}"
 echo ""
 echo -e "  Home page  : ${GREEN}http://${WORKER_IP}:${NODEPORT}${NC}"
 echo -e "  Login page : ${GREEN}http://${WORKER_IP}:${NODEPORT}/login.html${NC}"
+echo -e "  Dashboard  : ${GREEN}http://${WORKER_IP}:${NODEPORT}/dashboard.html${NC}"
 echo -e "  Health API : ${GREEN}http://${WORKER_IP}:${NODEPORT}/api/health${NC}"
 echo ""
 echo -e "${YELLOW}[NOTE]${NC} Make sure Azure NSG on worker node allows TCP port ${NODEPORT} inbound."
