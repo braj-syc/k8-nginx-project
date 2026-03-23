@@ -27,21 +27,3 @@ spec:
                 name: frontend-service
                 port:
                   number: 80
-```
-
----
-
-Here's how all the pieces connect:
-```
-Request: GET /
-  → Ingress → frontend-service → frontend pod (nginx)
-
-Request: POST /api/login
-  → Ingress → backend-service → backend pod (node.js)
-                                      │
-                                      ▼
-                               mysql-service
-                                      │
-                                      ▼
-                               mysql pod + PVC
-                               (data persists on disk)
