@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: YOUR_DOCKERHUB_USERNAME/k8s-backend:latest
+          image: brajsharma/k8s-backend:latest
           ports:
             - containerPort: 3000
           imagePullPolicy: Always
