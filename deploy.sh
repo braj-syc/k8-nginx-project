@@ -205,6 +205,15 @@ kubectl wait --for=condition=ready pod \
   --timeout=180s
 check "MySQL ready"
 success "MySQL is ready"
+# restart coredns to ensure DNS is fresh before backend starts
+log "  Restarting CoreDNS to ensure DNS resolution is working..."
+kubectl rollout restart deployment/coredns -n kube-system
+kubectl wait --namespace kube-system \
+  --for=condition=ready pod \
+  --selector=k8s-app=kube-dns \
+  --timeout=60s
+check "CoreDNS restart"
+success "CoreDNS ready"
 
 # 4. backend
 log "  Deploying backend..."
@@ -215,7 +224,7 @@ check "backend deploy"
 log "  Waiting for backend to be ready..."
 kubectl wait --for=condition=ready pod \
   --selector=app=backend \
-  --timeout=300s
+  --timeout=100s
 check "backend ready"
 success "Backend is ready"
 
