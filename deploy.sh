@@ -29,7 +29,7 @@ check() { if [ $? -ne 0 ]; then error "$1 failed. Exiting."; fi }
 # ============================================================
 # CONFIGURE THIS BEFORE RUNNING
 # ============================================================
-DOCKERHUB_USERNAME="brajsharma"
+DOCKERHUB_USERNAME=""
 # ============================================================
 
 echo ""
@@ -67,7 +67,6 @@ if ! command -v docker &>/dev/null; then
   success "Docker installed — re-launching with docker group active..."
   exec sg docker "$0 $*"
 else
-  # make sure current user is in docker group
   if ! groups $USER | grep -q docker; then
     sudo usermod -aG docker $USER
     exec sg docker "$0 $*"
@@ -175,7 +174,7 @@ kubectl delete -f k8s/mysql-pvc.yaml                    2>/dev/null || true
 kubectl delete -f k8s/mysql-secret.yaml                 2>/dev/null || true
 
 log "  Waiting for pods to terminate..."
-sleep 10
+sleep 15
 success "Cleanup done"
 
 # ============================================================
@@ -205,7 +204,8 @@ kubectl wait --for=condition=ready pod \
   --timeout=180s
 check "MySQL ready"
 success "MySQL is ready"
-# restart coredns to ensure DNS is fresh before backend starts
+
+# 4. restart coredns to fix DNS before backend starts
 log "  Restarting CoreDNS to ensure DNS resolution is working..."
 kubectl rollout restart deployment/coredns -n kube-system
 kubectl wait --namespace kube-system \
@@ -215,7 +215,7 @@ kubectl wait --namespace kube-system \
 check "CoreDNS restart"
 success "CoreDNS ready"
 
-# 4. backend
+# 5. backend
 log "  Deploying backend..."
 kubectl apply -f k8s/backend-deployment.yaml
 kubectl apply -f k8s/backend-service.yaml
@@ -224,17 +224,17 @@ check "backend deploy"
 log "  Waiting for backend to be ready..."
 kubectl wait --for=condition=ready pod \
   --selector=app=backend \
-  --timeout=100s
+  --timeout=300s
 check "backend ready"
 success "Backend is ready"
 
-# 5. frontend
+# 6. frontend
 log "  Deploying frontend..."
 kubectl apply -f k8s/frontend-deployment.yaml
 kubectl apply -f k8s/frontend-service.yaml
 check "frontend deploy"
 
-# 6. ingress
+# 7. ingress
 log "  Applying ingress rules..."
 kubectl apply -f k8s/ingress.yaml
 check "ingress"
@@ -242,7 +242,7 @@ check "ingress"
 log "  Waiting for frontend to be ready..."
 kubectl wait --for=condition=ready pod \
   --selector=app=frontend \
-  --timeout=120s
+  --timeout=60s
 check "frontend ready"
 success "Frontend is ready"
 
