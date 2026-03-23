@@ -29,7 +29,7 @@ check() { if [ $? -ne 0 ]; then error "$1 failed. Exiting."; fi }
 # ============================================================
 # CONFIGURE THIS BEFORE RUNNING
 # ============================================================
-DOCKERHUB_USERNAME=""
+DOCKERHUB_USERNAME="brajsharma"
 # ============================================================
 
 echo ""
