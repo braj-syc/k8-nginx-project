@@ -38,6 +38,7 @@ echo "   K8s Full Stack Deploy Script — $(date)"
 echo "============================================================"
 echo ""
 
+
 # ─── Validate config ─────────────────────────────────────────
 if [ -z "$DOCKERHUB_USERNAME" ]; then
   error "Please set DOCKERHUB_USERNAME at the top of this script before running."
